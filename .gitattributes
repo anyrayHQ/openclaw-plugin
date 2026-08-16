@@ -1,0 +1,9 @@
+# Force LF in the repository and on checkout, on every platform.
+# Without this, a clone on a machine with core.autocrlf=true rewrites every
+# source file to CRLF. That is not cosmetic here: connect verifies its embedded
+# copy of this package with a SHA-256 of the source, so a line-ending flip
+# breaks the staleness gate, and a published npm tarball should never carry
+# platform-dependent bytes.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
