@@ -2,16 +2,20 @@
 #
 # This package contains no real credentials. Its test fixtures are benign by
 # construction: every fake key literally contains "synthetic". We allowlist that
-# VALUE pattern, never a path or a filename — a path allow would also excuse a
+# VALUE pattern, never a path or a filename. A path allow would also excuse a
 # real secret that happened to land in the same file, which is exactly the
 # failure mode an allowlist is supposed to prevent.
+#
+# Uses the singular [allowlist] table, not [[allowlists]]: the array form is
+# only honoured by newer gitleaks builds and silently fails to match on the
+# version pinned in CI.
 #
 # Verify:  gitleaks dir . -c .gitleaks.toml --no-banner --redact
 
 [extend]
 useDefault = true
 
-[[allowlists]]
+[allowlist]
 description = "Synthetic test fixtures (values containing 'synthetic' or 'placeholder')"
 regexTarget = "secret"
 regexes = [
