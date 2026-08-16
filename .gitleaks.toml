@@ -1,0 +1,20 @@
+# Gitleaks config for @anyray/openclaw-plugin.
+#
+# This package contains no real credentials. Its test fixtures are benign by
+# construction: every fake key literally contains "synthetic". We allowlist that
+# VALUE pattern, never a path or a filename — a path allow would also excuse a
+# real secret that happened to land in the same file, which is exactly the
+# failure mode an allowlist is supposed to prevent.
+#
+# Verify:  gitleaks dir . -c .gitleaks.toml --no-banner --redact
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Synthetic test fixtures (values containing 'synthetic' or 'placeholder')"
+regexTarget = "secret"
+regexes = [
+  '''(?i)synthetic''',
+  '''(?i)placeholder''',
+]

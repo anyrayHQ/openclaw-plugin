@@ -1,0 +1,52 @@
+{
+  "name": "@anyray/openclaw-plugin",
+  "version": "0.1.0",
+  "description": "OpenClaw provider plugin for the Anyray gateway — per-session identity, content-free attribution, and cache-safe defaults on every model call.",
+  "license": "MIT",
+  "author": "Anyray",
+  "homepage": "https://docs.anyray.ai/integrations/openclaw",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anyrayHQ/openclaw-plugin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/anyrayHQ/openclaw-plugin/issues"
+  },
+  "keywords": [
+    "openclaw",
+    "openclaw-plugin",
+    "anyray",
+    "llm",
+    "gateway",
+    "prompt-caching",
+    "observability"
+  ],
+  "type": "module",
+  "main": "./src/index.ts",
+  "files": [
+    "src",
+    "openclaw.plugin.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test --import tsx 'src/*.test.ts'"
+  },
+  "openclaw": {
+    "extensions": ["./src/index.ts"],
+    "compat": {
+      "minGatewayVersion": "2026.7.1"
+    }
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.7.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.5",
+    "typescript": "^5.6.3"
+  }
+}

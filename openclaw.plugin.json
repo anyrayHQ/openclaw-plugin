@@ -1,0 +1,101 @@
+{
+  "id": "anyray",
+  "name": "Anyray",
+  "description": "Route OpenClaw's model calls through your organization's Anyray gateway with per-session identity and content-free attribution.",
+  "activation": {
+    "onStartup": true
+  },
+  "providers": ["anyray"],
+  "setup": {
+    "providers": [
+      {
+        "id": "anyray",
+        "envVars": ["ANYRAY_API_KEY", "ANYRAY_CLIENT_KEY"]
+      }
+    ]
+  },
+  "providerAuthChoices": [
+    {
+      "provider": "anyray",
+      "method": "api-key",
+      "choiceId": "anyray-api-key",
+      "choiceLabel": "Anyray client key",
+      "choiceHint": "Personal ark_ key from anyray-connect enrollment",
+      "groupId": "anyray",
+      "groupLabel": "Anyray",
+      "optionKey": "anyrayApiKey",
+      "cliFlag": "--anyray-api-key"
+    }
+  ],
+  "modelCatalog": {
+    "discovery": {
+      "anyray": "refreshable"
+    },
+    "providers": {
+      "anyray": {
+        "baseUrl": "https://unconfigured.gateway.invalid",
+        "api": "anthropic-messages",
+        "defaultModel": "claude-sonnet-4-5",
+        "models": [
+          {
+            "id": "claude-sonnet-4-5",
+            "name": "Claude Sonnet 4.5 (Anyray)",
+            "reasoning": true,
+            "input": ["text", "image"],
+            "contextWindow": 200000,
+            "maxTokens": 64000
+          },
+          {
+            "id": "claude-haiku-4-5",
+            "name": "Claude Haiku 4.5 (Anyray)",
+            "reasoning": true,
+            "input": ["text", "image"],
+            "contextWindow": 200000,
+            "maxTokens": 64000
+          },
+          {
+            "id": "claude-opus-4-8",
+            "name": "Claude Opus 4.8 (Anyray)",
+            "reasoning": true,
+            "input": ["text", "image"],
+            "contextWindow": 200000,
+            "maxTokens": 32000
+          }
+        ]
+      }
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["gatewayUrl"],
+    "properties": {
+      "gatewayUrl": {
+        "type": "string",
+        "description": "Anyray gateway origin, e.g. https://gateway.example.anyray.ai (no /v1 suffix)."
+      },
+      "apiKey": {
+        "type": "string",
+        "description": "Personal Anyray client key (ark_…). Supports ${ENV_VAR} substitution; defaults to ${ANYRAY_CLIENT_KEY}."
+      },
+      "user": {
+        "type": "string",
+        "description": "Attribution user (content-free; usually an email). Optional — the client key already attributes the enrolled user."
+      },
+      "team": {
+        "type": "string",
+        "description": "Attribution team (content-free). Optional."
+      }
+    },
+    "uiHints": {
+      "gatewayUrl": {
+        "label": "Gateway URL",
+        "help": "Your organization's Anyray gateway origin."
+      },
+      "apiKey": {
+        "label": "Client key",
+        "help": "Personal ark_ key from anyray-connect enrollment. Leave unset to read $ANYRAY_CLIENT_KEY."
+      }
+    }
+  }
+}
