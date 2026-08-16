@@ -1,7 +1,17 @@
 name: Publish
 
-# Publishing is deliberately manual and tag-driven: an npm version cannot be
-# unpublished after 72 hours, so it must never ride an ordinary push to main.
+# AUTH: npm Trusted Publishing (OIDC) — no npm token. npm has deprecated classic
+# automation tokens, and the account's 2FA blocks classic publish tokens in CI,
+# so this job authenticates via GitHub's OIDC id-token. It requires:
+#   (a) `id-token: write` on the job below;
+#   (b) npm >= 11.5.1 (bumped in a step — Node 24 ships an older npm);
+#   (c) a one-time Trusted Publisher configured on npmjs.com for
+#       `@anyray/openclaw-plugin`, pointing at THIS repo and THIS workflow file.
+# Provenance attestation is automatic under OIDC, and unlike the monorepo this
+# repository is public, so the attestation succeeds rather than 422-ing.
+#
+# Publishing is deliberately tag-driven and manual, never on push to main: an
+# npm version cannot be unpublished after 72 hours.
 on:
   release:
     types: [published]
@@ -15,24 +25,34 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      # Required for npm provenance: the OIDC token is what links the published
-      # tarball to this repository and workflow, giving the package its
-      # "Provenance" attestation on npmjs.com.
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
+          # No registry-url: it makes setup-node write an .npmrc with
+          # `_authToken=${NODE_AUTH_TOKEN}` and inject a placeholder token, which
+          # shadows OIDC and makes `npm publish` fall to an interactive OTP
+          # prompt (hang). npm defaults to registry.npmjs.org, and Trusted
+          # Publishing authenticates via the OIDC id-token — no .npmrc needed.
+
+      - name: Upgrade npm for OIDC Trusted Publishing
+        # Node 24 bundles npm < 11.5.1; Trusted Publishing (OIDC) needs >= 11.5.1.
+        # Pin it — do NOT float `npm@latest`: a bad `@latest` build (2026-07-09)
+        # shipped a broken bundled `sigstore`, and `libnpmpublish` require()s it
+        # at module load, so `npm publish` threw MODULE_NOT_FOUND before any flag
+        # was honored. Bump this pin deliberately after a confirmed publish.
+        run: npm install -g npm@11.5.1
 
       - run: npm install --no-audit --no-fund
 
       # Never publish a tarball whose tests did not pass.
       - run: npm test
+      - run: npm run build
 
-      # The tag must match the version being published, or a release that says
-      # v0.1.1 can quietly ship 0.1.0.
+      # The tag must match the version, or a release that says v0.1.1 quietly
+      # ships 0.1.0. Bound through env, never interpolated into the run block.
       - name: Verify tag matches package version
         if: github.event_name == 'release'
         env:
@@ -40,10 +60,12 @@ jobs:
         run: |
           PKG="v$(node -p "require('./package.json').version")"
           if [ "$TAG" != "$PKG" ]; then
-            echo "tag $TAG does not match package version $PKG" >&2
+            echo "::error::tag $TAG does not match package version $PKG"
             exit 1
           fi
 
-      - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # Close stdin so an auth failure errors immediately instead of hanging on
+      # an OTP prompt. --access public is required for a first-time scoped
+      # publish; provenance rides the OIDC token automatically.
+      - name: Publish
+        run: npm publish --access public </dev/null
