@@ -1,7 +1,11 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { attributionHeaderValue, buildAnyrayProvider } from './catalog.js';
+import {
+  attributionHeaderValue,
+  buildAnyrayProvider,
+  gatewayProviderForModel,
+} from './catalog.js';
 
 describe('manifest modelCatalog mirrors catalog.ts', () => {
   // The manifest's static modelCatalog is what OpenClaw materializes into the
@@ -24,6 +28,35 @@ describe('manifest modelCatalog mirrors catalog.ts', () => {
       staticEntry.models.map((m) => [m.id, m.maxTokens]),
       runtime.models.map((m) => [m.id, m.maxTokens])
     );
+  });
+});
+
+describe('gatewayProviderForModel', () => {
+  // Every catalog model must land somewhere deliberate: a Grok id names x-ai
+  // (the gateway can't infer it from the id), a Claude id stays unstamped so
+  // the org's default routing governs it. Driven off the shipped model list, so
+  // adding a model without deciding its route fails here rather than in prod.
+  it('routes every shipped model deliberately', () => {
+    const models = buildAnyrayProvider({ gatewayUrl: 'http://gw:8787' }, {})
+      .models as { id: string }[];
+    const routed = models.map((m) => [m.id, gatewayProviderForModel(m.id)]);
+    assert.deepEqual(routed, [
+      ['claude-sonnet-4-5', undefined],
+      ['claude-haiku-4-5', undefined],
+      ['claude-opus-4-8', undefined],
+      ['grok-4.6', 'x-ai'],
+      ['grok-4.3', 'x-ai'],
+      ['grok-build-0.1', 'x-ai'],
+    ]);
+  });
+
+  it('anchors on the id segment, not a substring', () => {
+    assert.equal(gatewayProviderForModel('anyray/grok-4.6'), 'x-ai');
+    // A model that merely CONTAINS "grok" is not a Grok id.
+    assert.equal(gatewayProviderForModel('my-grok-proxy'), undefined);
+    assert.equal(gatewayProviderForModel('claude-opus-4-8'), undefined);
+    assert.equal(gatewayProviderForModel(undefined), undefined);
+    assert.equal(gatewayProviderForModel(42), undefined);
   });
 });
 

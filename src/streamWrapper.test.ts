@@ -101,6 +101,44 @@ describe('createAnyrayStreamWrapper', () => {
     assert.equal(captured[0].options?.cacheRetention, undefined);
   });
 
+  // Grok reaches the gateway on the same URL and the same anthropic-messages
+  // wire as our Claude ids, so without a per-call provider header the gateway
+  // has nothing to route on and the call lands on whatever the org's default
+  // provider is — Claude, silently answering as Grok.
+  it('names x-ai on Grok calls and leaves Claude calls unstamped', async () => {
+    const captured: Captured[] = [];
+    const wrapped = wrap(captured);
+    await wrapped(
+      { id: 'grok-4.6', provider: 'anyray', api: 'anthropic-messages' },
+      {},
+      {}
+    );
+    await wrapped(
+      { id: 'claude-sonnet-4-5', provider: 'anyray', api: 'anthropic-messages' },
+      {},
+      {}
+    );
+    assert.equal(captured[0].options?.headers?.['x-anyray-provider'], 'x-ai');
+    assert.equal(
+      captured[1].options?.headers?.['x-anyray-provider'],
+      undefined
+    );
+  });
+
+  it('never overrides a caller-supplied provider header', async () => {
+    const captured: Captured[] = [];
+    const wrapped = wrap(captured);
+    await wrapped(
+      { id: 'grok-4.3', provider: 'anyray', api: 'anthropic-messages' },
+      {},
+      { headers: { 'x-anyray-provider': 'openrouter' } }
+    );
+    assert.equal(
+      captured[0].options?.headers?.['x-anyray-provider'],
+      'openrouter'
+    );
+  });
+
   it('declines to wrap when there is no inner transport or wrong provider ctx', () => {
     assert.equal(
       createAnyrayStreamWrapper({ provider: 'anyray', modelId: 'm' }),

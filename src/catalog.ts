@@ -52,7 +52,50 @@ const MODELS: ReadonlyArray<Record<string, unknown>> = [
     contextWindow: 200000,
     maxTokens: 32000,
   },
+  // xAI Grok. Same gateway URL and the same anthropic-messages wire as the
+  // Claude ids above — the gateway translates to xAI's chat/completions path —
+  // but the provider is named per call by the stream wrapper, since the gateway
+  // has no built-in model->provider map to infer `x-ai` from the id.
+  // `maxTokens` is xAI's own documented default for `max_completion_tokens`
+  // (128k, visible output only; reasoning tokens don't count against it), and
+  // `contextWindow` is each model's published `maxPromptLength`.
+  {
+    id: 'grok-4.6',
+    name: 'Grok 4.6 (Anyray)',
+    reasoning: true,
+    input: ['text', 'image'],
+    contextWindow: 500000,
+    maxTokens: 128000,
+  },
+  {
+    id: 'grok-4.3',
+    name: 'Grok 4.3 (Anyray)',
+    reasoning: true,
+    input: ['text', 'image'],
+    contextWindow: 1000000,
+    maxTokens: 128000,
+  },
+  {
+    id: 'grok-build-0.1',
+    name: 'Grok Build 0.1 (Anyray)',
+    reasoning: true,
+    input: ['text', 'image'],
+    contextWindow: 256000,
+    maxTokens: 128000,
+  },
 ];
+
+/** The gateway provider slug a catalog model must be routed to, or undefined to
+ *  leave the request unstamped so the org's own default routing picks (what the
+ *  Claude ids have always done). Anchored to the id's last path segment, not a
+ *  substring, so an `anyray/`-qualified id resolves the same way a bare one does. */
+export const gatewayProviderForModel = (
+  modelId: unknown
+): string | undefined => {
+  if (typeof modelId !== 'string') return undefined;
+  const bare = modelId.slice(modelId.lastIndexOf('/') + 1);
+  return bare.startsWith('grok-') ? 'x-ai' : undefined;
+};
 
 const trimmedString = (v: unknown): string | undefined =>
   typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined;

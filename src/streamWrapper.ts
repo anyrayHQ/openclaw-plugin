@@ -16,6 +16,7 @@ import type {
   StreamOptions,
 } from 'openclaw/plugin-sdk/provider-types';
 import { patchPayloadSessionIdentity } from './sessionIdentity.js';
+import { gatewayProviderForModel } from './catalog.js';
 
 export const ANYRAY_PROVIDER_ID = 'anyray';
 
@@ -55,6 +56,15 @@ export const createAnyrayStreamWrapper = (
       opts.apiKey.startsWith('ark_')
     ) {
       headers['x-anyray-api-key'] = opts.apiKey;
+    }
+    // Non-Anthropic models in our catalog (Grok) ride the same gateway URL and
+    // the same wire, so the model id is all that distinguishes them — and the
+    // gateway has no built-in model->provider map to read it from. Name the
+    // provider per call instead. Claude ids stay unstamped so an org's default
+    // routing config still governs them, and an explicit caller value wins.
+    const gatewayProvider = gatewayProviderForModel(model.id);
+    if (gatewayProvider && headers['x-anyray-provider'] === undefined) {
+      headers['x-anyray-provider'] = gatewayProvider;
     }
     opts.headers = headers;
     const sessionId =
