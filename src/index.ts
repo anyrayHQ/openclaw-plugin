@@ -24,24 +24,15 @@
 import { defineSingleProviderPluginEntry } from 'openclaw/plugin-sdk/provider-entry';
 import type { ProviderCatalogContext } from 'openclaw/plugin-sdk/provider-types';
 import manifest from '../openclaw.plugin.json' with { type: 'json' };
-import { buildAnyrayProvider, type AnyrayPluginConfig } from './catalog.js';
+import { buildAnyrayProvider, pluginConfigFrom } from './catalog.js';
 import { createAnyrayStreamWrapper } from './streamWrapper.js';
 
 /** The plugin's own `plugins.entries.anyray.config` block from the resolved
  *  gateway config. The plain-object `provider` form (the shape the shipped
  *  2026.7.x SDK normalizes; the `(api) => …` function form is newer) has no
  *  `api.pluginConfig` closure, so the catalog reads it from `ctx.config`. */
-const pluginConfigOf = (ctx: ProviderCatalogContext): AnyrayPluginConfig => {
-  const plugins = ctx.config.plugins;
-  if (typeof plugins !== 'object' || plugins === null) return {};
-  const entries = (plugins as Record<string, unknown>).entries;
-  if (typeof entries !== 'object' || entries === null) return {};
-  const entry = (entries as Record<string, unknown>).anyray;
-  if (typeof entry !== 'object' || entry === null) return {};
-  const config = (entry as Record<string, unknown>).config;
-  if (typeof config !== 'object' || config === null) return {};
-  return config as AnyrayPluginConfig;
-};
+const pluginConfigOf = (ctx: ProviderCatalogContext) =>
+  pluginConfigFrom(ctx.config);
 
 export default defineSingleProviderPluginEntry({
   id: 'anyray',
