@@ -16,9 +16,17 @@ import type {
   StreamOptions,
 } from 'openclaw/plugin-sdk/provider-types';
 import { patchPayloadSessionIdentity } from './sessionIdentity.js';
-import { gatewayProviderForModel } from './catalog.js';
+import {
+  attributionHeaderValue,
+  gatewayProviderForModel,
+  pluginConfigFrom,
+} from './catalog.js';
 
 export const ANYRAY_PROVIDER_ID = 'anyray';
+
+/** Attribution fallback when the operator configured no user/team: the tool
+ *  name alone still separates OpenClaw traffic from everything else. */
+const TOOL_ONLY_ATTRIBUTION = '{"tool":"openclaw"}';
 
 /** Cache retention default for the gateway host: OpenClaw auto-seeds prompt
  *  caching only on api.anthropic.com/Vertex, so unset here means "no
@@ -31,6 +39,13 @@ export const createAnyrayStreamWrapper = (
   const inner = ctx.streamFn;
   if (!inner) return undefined;
   if (ctx.provider !== ANYRAY_PROVIDER_ID) return undefined;
+
+  // Resolved once at wrap time, not per call: `ctx.config` is the same
+  // resolved config the catalog reads, and OpenClaw re-runs the wrapper
+  // factory when config reloads.
+  const attribution =
+    attributionHeaderValue(pluginConfigFrom(ctx.config)) ??
+    TOOL_ONLY_ATTRIBUTION;
 
   const wrapped: StreamFn = (model, context, options) => {
     if (model.provider !== ANYRAY_PROVIDER_ID || model.api !== 'anthropic-messages') {
@@ -46,9 +61,14 @@ export const createAnyrayStreamWrapper = (
     // needs no anthropic-beta from us (its org lane mints provider headers
     // server-side), and auth already rides x-api-key; this is diagnostics
     // attribution only. Existing values are never overwritten.
+    //
+    // The value MUST come from plugin config, not a hardcoded tool name: the
+    // dropped catalog headers are the only other carrier of the operator's
+    // user/team, so stamping `{"tool":"openclaw"}` here left every OpenClaw
+    // request unattributed in the spend store (wire-captured 2026-08-17).
     const headers = { ...(opts.headers ?? {}) };
     if (headers['x-anyray-metadata'] === undefined) {
-      headers['x-anyray-metadata'] = '{"tool":"openclaw"}';
+      headers['x-anyray-metadata'] = attribution;
     }
     if (
       headers['x-anyray-api-key'] === undefined &&

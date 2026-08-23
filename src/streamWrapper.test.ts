@@ -25,15 +25,24 @@ const innerFn = (captured: Captured[]): StreamFn => {
   };
 };
 
-const wrap = (captured: Captured[]): StreamFn => {
+const wrap = (
+  captured: Captured[],
+  config?: Record<string, unknown>
+): StreamFn => {
   const wrapped = createAnyrayStreamWrapper({
     provider: 'anyray',
     modelId: MODEL.id,
     streamFn: innerFn(captured),
+    ...(config ? { config } : {}),
   });
   assert.ok(wrapped, 'wrapper produced');
   return wrapped;
 };
+
+/** A resolved OpenClaw config carrying our plugin's own config block. */
+const configWith = (own: Record<string, unknown>): Record<string, unknown> => ({
+  plugins: { entries: { anyray: { config: own } } },
+});
 
 describe('createAnyrayStreamWrapper', () => {
   it('injects session identity into the payload via chained onPayload', async () => {
@@ -136,6 +145,65 @@ describe('createAnyrayStreamWrapper', () => {
     assert.equal(
       captured[0].options?.headers?.['x-anyray-provider'],
       'openrouter'
+    );
+  });
+
+  // The regression this encodes: the catalog builds the full attribution
+  // value, but 2026.7.1 drops provider-level headers for plugin providers, so
+  // the per-call stamp is its ONLY carrier. Hardcoding the tool name here left
+  // every OpenClaw request unattributed in the spend store.
+  it('stamps the configured user/team, not just the tool name', async () => {
+    const captured: Captured[] = [];
+    await wrap(
+      captured,
+      configWith({
+        gatewayUrl: 'https://gateway.example.anyray.ai',
+        user: 'dev@example.com',
+        team: 'platform',
+      })
+    )(MODEL, {}, {});
+    assert.deepEqual(
+      JSON.parse(String(captured[0].options?.headers?.['x-anyray-metadata'])),
+      { user: 'dev@example.com', team: 'platform', tool: 'openclaw' }
+    );
+  });
+
+  it('falls back to the tool name when no user/team is configured', async () => {
+    const captured: Captured[] = [];
+    await wrap(captured, configWith({ gatewayUrl: 'https://g.example.com' }))(
+      MODEL,
+      {},
+      {}
+    );
+    assert.equal(
+      captured[0].options?.headers?.['x-anyray-metadata'],
+      '{"tool":"openclaw"}'
+    );
+  });
+
+  it('falls back to the tool name when the config is absent or foreign', async () => {
+    for (const config of [
+      undefined,
+      {} as Record<string, unknown>,
+      { plugins: { entries: { other: { config: { user: 'x' } } } } },
+    ]) {
+      const captured: Captured[] = [];
+      await wrap(captured, config)(MODEL, {}, {});
+      assert.equal(
+        captured[0].options?.headers?.['x-anyray-metadata'],
+        '{"tool":"openclaw"}'
+      );
+    }
+  });
+
+  it('never overrides a caller-supplied attribution header', async () => {
+    const captured: Captured[] = [];
+    await wrap(captured, configWith({ user: 'dev@example.com' }))(MODEL, {}, {
+      headers: { 'x-anyray-metadata': '{"user":"caller@example.com"}' },
+    });
+    assert.equal(
+      captured[0].options?.headers?.['x-anyray-metadata'],
+      '{"user":"caller@example.com"}'
     );
   });
 

@@ -19,6 +19,25 @@ export interface AnyrayPluginConfig {
   team?: unknown;
 }
 
+/** Dig `plugins.entries.anyray.config` out of a resolved OpenClaw config.
+ *  Shared by the catalog (which builds the provider entry) and the stream
+ *  wrapper (which re-stamps per call, because the transport drops the
+ *  catalog's provider-level headers for plugin providers). Every step is
+ *  shape-checked: a foreign or half-written config yields `{}`, never a throw
+ *  on the hot path. */
+export const pluginConfigFrom = (config: unknown): AnyrayPluginConfig => {
+  if (typeof config !== 'object' || config === null) return {};
+  const plugins = (config as Record<string, unknown>).plugins;
+  if (typeof plugins !== 'object' || plugins === null) return {};
+  const entries = (plugins as Record<string, unknown>).entries;
+  if (typeof entries !== 'object' || entries === null) return {};
+  const entry = (entries as Record<string, unknown>).anyray;
+  if (typeof entry !== 'object' || entry === null) return {};
+  const own = (entry as Record<string, unknown>).config;
+  if (typeof own !== 'object' || own === null) return {};
+  return own as AnyrayPluginConfig;
+};
+
 /** OpenClaw suppresses implicit beta headers off-host; restore the API-key set. */
 const ANTHROPIC_BETA = 'interleaved-thinking-2025-05-14';
 
