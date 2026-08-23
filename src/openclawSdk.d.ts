@@ -100,6 +100,11 @@ declare module 'openclaw/plugin-sdk/provider-types' {
     model?: StreamModel;
     agentId?: string;
     streamFn?: StreamFn;
+    /** The full resolved OpenClaw config, same object the catalog gets.
+     *  Upstream types it optional (`ProviderPrepareExtraParamsContext.config`),
+     *  and it was verified present at wrap time on a live 2026.7.1 daemon —
+     *  hence optional here, with the reader shape-checking it. */
+    config?: Record<string, unknown>;
     [key: string]: unknown;
   }
 
