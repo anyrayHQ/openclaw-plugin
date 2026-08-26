@@ -19,6 +19,7 @@ import { patchPayloadSessionIdentity } from './sessionIdentity.js';
 import {
   attributionHeaderValue,
   gatewayProviderForModel,
+  gatewayRoutingEnabled,
   pluginConfigFrom,
 } from './catalog.js';
 
@@ -43,9 +44,16 @@ export const createAnyrayStreamWrapper = (
   // Resolved once at wrap time, not per call: `ctx.config` is the same
   // resolved config the catalog reads, and OpenClaw re-runs the wrapper
   // factory when config reloads.
+  const pluginConfig = pluginConfigFrom(ctx.config);
   const attribution =
-    attributionHeaderValue(pluginConfigFrom(ctx.config)) ??
-    TOOL_ONLY_ATTRIBUTION;
+    attributionHeaderValue(pluginConfig) ?? TOOL_ONLY_ATTRIBUTION;
+  // Opt-in (gatewayRouting: true): leave non-Anthropic models unstamped so the
+  // org's admin-stored routing config dispatches them — the only path that
+  // supports per-key routing (provider_key_id), since a provider header
+  // bypasses the stored config on the gateway. Off by default: unstamped Grok
+  // traffic REQUIRES a routing-config rule matching the model id, or it lands
+  // on the org's default provider.
+  const stampProvider = !gatewayRoutingEnabled(pluginConfig);
 
   const wrapped: StreamFn = (model, context, options) => {
     if (model.provider !== ANYRAY_PROVIDER_ID || model.api !== 'anthropic-messages') {
@@ -82,7 +90,9 @@ export const createAnyrayStreamWrapper = (
     // gateway has no built-in model->provider map to read it from. Name the
     // provider per call instead. Claude ids stay unstamped so an org's default
     // routing config still governs them, and an explicit caller value wins.
-    const gatewayProvider = gatewayProviderForModel(model.id);
+    const gatewayProvider = stampProvider
+      ? gatewayProviderForModel(model.id)
+      : undefined;
     if (gatewayProvider && headers['x-anyray-provider'] === undefined) {
       headers['x-anyray-provider'] = gatewayProvider;
     }

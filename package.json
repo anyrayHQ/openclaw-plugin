@@ -1,6 +1,6 @@
 {
   "name": "@anyray/openclaw-plugin",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "OpenClaw provider plugin for the Anyray gateway \u2014 per-session identity, content-free attribution, and cache-safe defaults on every model call.",
   "license": "MIT",
   "author": "Anyray",

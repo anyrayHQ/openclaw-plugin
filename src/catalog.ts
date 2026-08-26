@@ -17,7 +17,21 @@ export interface AnyrayPluginConfig {
   apiKey?: unknown;
   user?: unknown;
   team?: unknown;
+  gatewayRouting?: unknown;
 }
+
+/**
+ * Opt-in: `gatewayRouting: true` stops the wrapper from naming a provider on
+ * non-Anthropic models (Grok), so the org's ADMIN-stored routing config
+ * governs them — required for per-key routing (`provider_key_id`, e.g. two
+ * xAI accounts) and conditional dispatch. Off by default because without a
+ * routing-config rule matching `params.model` (grok-*), an unstamped Grok
+ * request falls to the org's default provider and fails there — the operator
+ * must set up the gateway rule first, then flip this flag. Strictly `true`
+ * only: any other value keeps the safe stamping behavior.
+ */
+export const gatewayRoutingEnabled = (config: AnyrayPluginConfig): boolean =>
+  config.gatewayRouting === true;
 
 /** Dig `plugins.entries.anyray.config` out of a resolved OpenClaw config.
  *  Shared by the catalog (which builds the provider entry) and the stream
