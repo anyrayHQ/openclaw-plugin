@@ -134,6 +134,41 @@ describe('createAnyrayStreamWrapper', () => {
     );
   });
 
+  it('gatewayRouting: true leaves Grok unstamped so the org routing config governs it', async () => {
+    // The opt-in for per-key routing (provider_key_id): a provider header
+    // bypasses the gateway's stored routing config, so multi-key xAI needs the
+    // stamp off — and the operator must have a model-matching routing rule in
+    // place first (documented on the integration page).
+    const captured: Captured[] = [];
+    const wrapped = wrap(captured, configWith({ gatewayRouting: true }));
+    await wrapped(
+      { id: 'grok-4.6', provider: 'anyray', api: 'anthropic-messages' },
+      {},
+      {}
+    );
+    assert.equal(
+      captured[0].options?.headers?.['x-anyray-provider'],
+      undefined
+    );
+  });
+
+  it('gatewayRouting must be literally true — anything else keeps stamping', async () => {
+    for (const value of ['true', 1, {}, null]) {
+      const captured: Captured[] = [];
+      const wrapped = wrap(captured, configWith({ gatewayRouting: value }));
+      await wrapped(
+        { id: 'grok-4.6', provider: 'anyray', api: 'anthropic-messages' },
+        {},
+        {}
+      );
+      assert.equal(
+        captured[0].options?.headers?.['x-anyray-provider'],
+        'x-ai',
+        `value ${JSON.stringify(value)} must not disable stamping`
+      );
+    }
+  });
+
   it('never overrides a caller-supplied provider header', async () => {
     const captured: Captured[] = [];
     const wrapped = wrap(captured);
