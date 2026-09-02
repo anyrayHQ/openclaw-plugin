@@ -60,7 +60,35 @@ const ANTHROPIC_BETA = 'interleaved-thinking-2025-05-14';
  *  the connect enrollment writes. */
 const KEY_ENV = 'ANYRAY_CLIENT_KEY';
 
+// Anthropic Claude. `contextWindow` and `maxTokens` are each model's own
+// published numbers, NOT its family's: Opus and Sonnet both raised their output
+// ceiling and their window mid-4.x, so a family-shaped guess is wrong for about
+// half this list. Current generation first — OpenClaw renders them in order.
 const MODELS: ReadonlyArray<Record<string, unknown>> = [
+  {
+    id: 'claude-fable-5-1',
+    name: 'Claude Fable 5.1 (Anyray)',
+    reasoning: true,
+    input: ['text', 'image'],
+    contextWindow: 1_000_000,
+    maxTokens: 128_000,
+  },
+  {
+    id: 'claude-opus-5',
+    name: 'Claude Opus 5 (Anyray)',
+    reasoning: true,
+    input: ['text', 'image'],
+    contextWindow: 1_000_000,
+    maxTokens: 128_000,
+  },
+  {
+    id: 'claude-sonnet-5',
+    name: 'Claude Sonnet 5 (Anyray)',
+    reasoning: true,
+    input: ['text', 'image'],
+    contextWindow: 1_000_000,
+    maxTokens: 128_000,
+  },
   {
     id: 'claude-sonnet-4-5',
     name: 'Claude Sonnet 4.5 (Anyray)',
@@ -82,8 +110,8 @@ const MODELS: ReadonlyArray<Record<string, unknown>> = [
     name: 'Claude Opus 4.8 (Anyray)',
     reasoning: true,
     input: ['text', 'image'],
-    contextWindow: 200000,
-    maxTokens: 32000,
+    contextWindow: 1_000_000,
+    maxTokens: 128_000,
   },
   // xAI Grok. Same gateway URL and the same anthropic-messages wire as the
   // Claude ids above — the gateway translates to xAI's chat/completions path —

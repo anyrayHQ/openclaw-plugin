@@ -38,6 +38,30 @@
         "defaultModel": "claude-sonnet-4-5",
         "models": [
           {
+            "id": "claude-fable-5-1",
+            "name": "Claude Fable 5.1 (Anyray)",
+            "reasoning": true,
+            "input": ["text", "image"],
+            "contextWindow": 1000000,
+            "maxTokens": 128000
+          },
+          {
+            "id": "claude-opus-5",
+            "name": "Claude Opus 5 (Anyray)",
+            "reasoning": true,
+            "input": ["text", "image"],
+            "contextWindow": 1000000,
+            "maxTokens": 128000
+          },
+          {
+            "id": "claude-sonnet-5",
+            "name": "Claude Sonnet 5 (Anyray)",
+            "reasoning": true,
+            "input": ["text", "image"],
+            "contextWindow": 1000000,
+            "maxTokens": 128000
+          },
+          {
             "id": "claude-sonnet-4-5",
             "name": "Claude Sonnet 4.5 (Anyray)",
             "reasoning": true,
@@ -58,8 +82,8 @@
             "name": "Claude Opus 4.8 (Anyray)",
             "reasoning": true,
             "input": ["text", "image"],
-            "contextWindow": 200000,
-            "maxTokens": 32000
+            "contextWindow": 1000000,
+            "maxTokens": 128000
           },
           {
             "id": "grok-4.6",
