@@ -42,11 +42,13 @@ describe('gatewayProviderForModel', () => {
     const routed = models.map((m) => [m.id, gatewayProviderForModel(m.id)]);
     assert.deepEqual(routed, [
       ['claude-fable-5-1', undefined],
+      ['claude-opus-5-5', undefined],
       ['claude-opus-5', undefined],
       ['claude-sonnet-5', undefined],
       ['claude-sonnet-4-5', undefined],
       ['claude-haiku-4-5', undefined],
       ['claude-opus-4-8', undefined],
+      ['grok-4.7', 'x-ai'],
       ['grok-4.6', 'x-ai'],
       ['grok-4.3', 'x-ai'],
       ['grok-build-0.1', 'x-ai'],

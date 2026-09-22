@@ -46,6 +46,14 @@
             "maxTokens": 128000
           },
           {
+            "id": "claude-opus-5-5",
+            "name": "Claude Opus 5.5 (Anyray)",
+            "reasoning": true,
+            "input": ["text", "image"],
+            "contextWindow": 1000000,
+            "maxTokens": 128000
+          },
+          {
             "id": "claude-opus-5",
             "name": "Claude Opus 5 (Anyray)",
             "reasoning": true,
@@ -83,6 +91,14 @@
             "reasoning": true,
             "input": ["text", "image"],
             "contextWindow": 1000000,
+            "maxTokens": 128000
+          },
+          {
+            "id": "grok-4.7",
+            "name": "Grok 4.7 (Anyray)",
+            "reasoning": true,
+            "input": ["text", "image"],
+            "contextWindow": 500000,
             "maxTokens": 128000
           },
           {
