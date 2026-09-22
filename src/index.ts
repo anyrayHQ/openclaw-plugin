@@ -15,7 +15,10 @@
  * The manifest's static `modelCatalog` block is what OpenClaw materializes for
  * model discovery before this runtime catalog resolves (live-container fact:
  * without it, `anyray/*` refs are unknown to the agent runtime); the runtime
- * `catalog.run` then supplies the real gateway coordinates from plugin config.
+ * `catalog.run` then supplies the real gateway coordinates from plugin config,
+ * and asks the gateway which models the org's admin config makes selectable —
+ * so adding a provider is a console action, not a per-machine config edit
+ * (`staticRun` keeps the compiled list for the paths that must not do I/O).
  *
  * PRIVACY: everything injected is content-free — an opaque session id hash,
  * the enrollment key, and user/team attribution the operator configured.
@@ -24,7 +27,11 @@
 import { defineSingleProviderPluginEntry } from 'openclaw/plugin-sdk/provider-entry';
 import type { ProviderCatalogContext } from 'openclaw/plugin-sdk/provider-types';
 import manifest from '../openclaw.plugin.json' with { type: 'json' };
-import { buildAnyrayProvider, pluginConfigFrom } from './catalog.js';
+import {
+  buildAnyrayProvider,
+  buildAnyrayProviderWithGatewayModels,
+  pluginConfigFrom,
+} from './catalog.js';
 import { createAnyrayStreamWrapper } from './streamWrapper.js';
 
 /** The plugin's own `plugins.entries.anyray.config` block from the resolved
@@ -45,6 +52,15 @@ export default defineSingleProviderPluginEntry({
     docsPath: 'https://docs.anyray.ai/integrations/openclaw',
     catalog: {
       run: async (ctx: ProviderCatalogContext) => ({
+        provider: await buildAnyrayProviderWithGatewayModels(
+          pluginConfigOf(ctx),
+          ctx.env
+        ),
+      }),
+      // The offline twin the SDK calls where a network read is not allowed.
+      // Same entry, compiled model list — never the empty one a failed fetch
+      // would otherwise imply.
+      staticRun: async (ctx: ProviderCatalogContext) => ({
         provider: buildAnyrayProvider(pluginConfigOf(ctx), ctx.env),
       }),
     },
