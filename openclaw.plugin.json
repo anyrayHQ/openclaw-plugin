@@ -35,11 +35,19 @@
       "anyray": {
         "baseUrl": "https://unconfigured.gateway.invalid",
         "api": "anthropic-messages",
-        "defaultModel": "claude-sonnet-4-5",
+        "defaultModel": "claude-sonnet-5-5",
         "models": [
           {
-            "id": "claude-fable-5-1",
-            "name": "Claude Fable 5.1 (Anyray)",
+            "id": "anyray-default",
+            "name": "Org default (Anyray)",
+            "reasoning": true,
+            "input": ["text", "image"],
+            "contextWindow": 200000,
+            "maxTokens": 64000
+          },
+          {
+            "id": "claude-fable-5-2",
+            "name": "Claude Fable 5.2 (Anyray)",
             "reasoning": true,
             "input": ["text", "image"],
             "contextWindow": 1000000,
@@ -54,16 +62,32 @@
             "maxTokens": 128000
           },
           {
-            "id": "claude-opus-5",
-            "name": "Claude Opus 5 (Anyray)",
+            "id": "claude-sonnet-5-5",
+            "name": "Claude Sonnet 5.5 (Anyray)",
             "reasoning": true,
             "input": ["text", "image"],
             "contextWindow": 1000000,
             "maxTokens": 128000
           },
           {
-            "id": "claude-sonnet-5",
-            "name": "Claude Sonnet 5 (Anyray)",
+            "id": "claude-haiku-5-5",
+            "name": "Claude Haiku 5.5 (Anyray)",
+            "reasoning": true,
+            "input": ["text", "image"],
+            "contextWindow": 1000000,
+            "maxTokens": 128000
+          },
+          {
+            "id": "grok-4.7",
+            "name": "Grok 4.7 (Anyray)",
+            "reasoning": true,
+            "input": ["text", "image"],
+            "contextWindow": 500000,
+            "maxTokens": 128000
+          },
+          {
+            "id": "claude-fable-5-1",
+            "name": "Claude Fable 5.1 (Anyray)",
             "reasoning": true,
             "input": ["text", "image"],
             "contextWindow": 1000000,
@@ -84,46 +108,6 @@
             "input": ["text", "image"],
             "contextWindow": 200000,
             "maxTokens": 64000
-          },
-          {
-            "id": "claude-opus-4-8",
-            "name": "Claude Opus 4.8 (Anyray)",
-            "reasoning": true,
-            "input": ["text", "image"],
-            "contextWindow": 1000000,
-            "maxTokens": 128000
-          },
-          {
-            "id": "grok-4.7",
-            "name": "Grok 4.7 (Anyray)",
-            "reasoning": true,
-            "input": ["text", "image"],
-            "contextWindow": 500000,
-            "maxTokens": 128000
-          },
-          {
-            "id": "grok-4.6",
-            "name": "Grok 4.6 (Anyray)",
-            "reasoning": true,
-            "input": ["text", "image"],
-            "contextWindow": 500000,
-            "maxTokens": 128000
-          },
-          {
-            "id": "grok-4.3",
-            "name": "Grok 4.3 (Anyray)",
-            "reasoning": true,
-            "input": ["text", "image"],
-            "contextWindow": 1000000,
-            "maxTokens": 128000
-          },
-          {
-            "id": "grok-build-0.1",
-            "name": "Grok Build 0.1 (Anyray)",
-            "reasoning": true,
-            "input": ["text", "image"],
-            "contextWindow": 256000,
-            "maxTokens": 128000
           }
         ]
       }

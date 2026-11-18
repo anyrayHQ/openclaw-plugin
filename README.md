@@ -54,8 +54,10 @@ Then register it in `~/.openclaw/openclaw.json`:
 Restart the gateway once, then select a model:
 
 ```
-/model anyray/claude-sonnet-4-5
+/model anyray/anyray-default
 ```
+
+`anyray-default` is the model your gateway's admin config picks for the org.
 
 `anyray-connect` performs this whole setup automatically, including key rotation —
 see the [integration guide](https://docs.anyray.ai/integrations/openclaw).

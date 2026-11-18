@@ -60,14 +60,24 @@ const ANTHROPIC_BETA = 'interleaved-thinking-2025-05-14';
  *  the connect enrollment writes. */
 const KEY_ENV = 'ANYRAY_CLIENT_KEY';
 
-// Anthropic Claude. `contextWindow` and `maxTokens` are each model's own
-// published numbers, NOT its family's: Opus and Sonnet both raised their output
-// ceiling and their window mid-4.x, so a family-shaped guess is wrong for about
-// half this list. Current generation first — OpenClaw renders them in order.
+const ORG_DEFAULT_MODEL_ID = 'anyray-default';
+
+// Current-generation models first, then released connect seeds kept for existing
+// hosts. OpenClaw renders this order; limits are each model's published numbers.
 const MODELS: ReadonlyArray<Record<string, unknown>> = [
+  // Conservative offline limits: older gateways or defaults pinned to Sonnet 4.5
+  // still resolve to a 200k/64k model. Online, the gateway's limits replace these.
   {
-    id: 'claude-fable-5-1',
-    name: 'Claude Fable 5.1 (Anyray)',
+    id: ORG_DEFAULT_MODEL_ID,
+    name: 'Org default (Anyray)',
+    reasoning: true,
+    input: ['text', 'image'],
+    contextWindow: 200000,
+    maxTokens: 64000,
+  },
+  {
+    id: 'claude-fable-5-2',
+    name: 'Claude Fable 5.2 (Anyray)',
     reasoning: true,
     input: ['text', 'image'],
     contextWindow: 1_000_000,
@@ -82,21 +92,53 @@ const MODELS: ReadonlyArray<Record<string, unknown>> = [
     maxTokens: 128_000,
   },
   {
-    id: 'claude-opus-5',
-    name: 'Claude Opus 5 (Anyray)',
+    id: 'claude-sonnet-5-5',
+    name: 'Claude Sonnet 5.5 (Anyray)',
     reasoning: true,
     input: ['text', 'image'],
     contextWindow: 1_000_000,
     maxTokens: 128_000,
   },
   {
-    id: 'claude-sonnet-5',
-    name: 'Claude Sonnet 5 (Anyray)',
+    id: 'claude-haiku-5-5',
+    name: 'Claude Haiku 5.5 (Anyray)',
     reasoning: true,
     input: ['text', 'image'],
     contextWindow: 1_000_000,
     maxTokens: 128_000,
   },
+  // xAI Grok. Same gateway URL and the same anthropic-messages wire as the
+  // Claude ids above — the gateway translates to xAI's chat/completions path —
+  // but the provider is named per call by the stream wrapper, since the gateway
+  // has no built-in model->provider map to infer `x-ai` from the id.
+  // `maxTokens` is xAI's own documented default for `max_completion_tokens`
+  // (128k, visible output only; reasoning tokens don't count against it), and
+  // `contextWindow` is the model's published `maxPromptLength`.
+  {
+    id: 'grok-4.7',
+    name: 'Grok 4.7 (Anyray)',
+    reasoning: true,
+    input: ['text', 'image'],
+    contextWindow: 500000,
+    maxTokens: 128000,
+  },
+  // Fable 5.1 led this list until 5.2 (2026-11-09). A host that picked it
+  // keeps resolving it: OpenClaw only resolves ids the provider publishes.
+  {
+    id: 'claude-fable-5-1',
+    name: 'Claude Fable 5.1 (Anyray)',
+    reasoning: true,
+    input: ['text', 'image'],
+    contextWindow: 1_000_000,
+    maxTokens: 128_000,
+  },
+  // Keep released plugin-lane seeds for existing hosts: connect seeded
+  // anyray/claude-sonnet-4-5 as primary and anyray/claude-haiku-4-5 as fallback,
+  // and never rewrites an existing primary. OpenClaw 2026.7.1 resolves refs only
+  // from the provider's published list or cfg.models.providers[provider].
+  // resolveConfiguredFallbackModel needs that provider's baseUrl in the config
+  // file, which the plugin lane does not write. Dropping these would cause
+  // "Unknown model: anyray/claude-sonnet-4-5" when the compiled list serves.
   {
     id: 'claude-sonnet-4-5',
     name: 'Claude Sonnet 4.5 (Anyray)',
@@ -112,53 +154,6 @@ const MODELS: ReadonlyArray<Record<string, unknown>> = [
     input: ['text', 'image'],
     contextWindow: 200000,
     maxTokens: 64000,
-  },
-  {
-    id: 'claude-opus-4-8',
-    name: 'Claude Opus 4.8 (Anyray)',
-    reasoning: true,
-    input: ['text', 'image'],
-    contextWindow: 1_000_000,
-    maxTokens: 128_000,
-  },
-  // xAI Grok. Same gateway URL and the same anthropic-messages wire as the
-  // Claude ids above — the gateway translates to xAI's chat/completions path —
-  // but the provider is named per call by the stream wrapper, since the gateway
-  // has no built-in model->provider map to infer `x-ai` from the id.
-  // `maxTokens` is xAI's own documented default for `max_completion_tokens`
-  // (128k, visible output only; reasoning tokens don't count against it), and
-  // `contextWindow` is each model's published `maxPromptLength`.
-  {
-    id: 'grok-4.7',
-    name: 'Grok 4.7 (Anyray)',
-    reasoning: true,
-    input: ['text', 'image'],
-    contextWindow: 500000,
-    maxTokens: 128000,
-  },
-  {
-    id: 'grok-4.6',
-    name: 'Grok 4.6 (Anyray)',
-    reasoning: true,
-    input: ['text', 'image'],
-    contextWindow: 500000,
-    maxTokens: 128000,
-  },
-  {
-    id: 'grok-4.3',
-    name: 'Grok 4.3 (Anyray)',
-    reasoning: true,
-    input: ['text', 'image'],
-    contextWindow: 1000000,
-    maxTokens: 128000,
-  },
-  {
-    id: 'grok-build-0.1',
-    name: 'Grok Build 0.1 (Anyray)',
-    reasoning: true,
-    input: ['text', 'image'],
-    contextWindow: 256000,
-    maxTokens: 128000,
   },
 ];
 
@@ -304,8 +299,10 @@ type GatewayCatalogModel = {
   maxOutputTokens?: number;
 };
 
+/** A limit counts only when it floors to at least 1. A fraction below 1 would
+ *  floor to 0, and a 0 survives the `??` fallbacks below as a zero budget. */
 const positiveInt = (v: unknown): number | undefined =>
-  typeof v === 'number' && Number.isFinite(v) && v > 0
+  typeof v === 'number' && Number.isFinite(v) && v >= 1
     ? Math.floor(v)
     : undefined;
 
@@ -401,8 +398,9 @@ const UNKNOWN_MODEL_MAX_TOKENS = 8192;
  * one.
  *
  * A gateway-listed id we already ship keeps its compiled entry (real published
- * limits, the display name people recognize). An id we have never heard of gets
- * the gateway's own limits, and only a floor when the gateway reported none —
+ * limits, the display name people recognize), except the org-defined sentinel,
+ * whose reported limits replace its offline defaults. An unknown id gets the
+ * gateway's own limits, and only a floor when the gateway reported none —
  * OpenClaw requires `maxTokens` on a customized entry, and an entry without one
  * silently stops inheriting anything.
  */
@@ -412,6 +410,13 @@ export const mergeCatalogModels = (
   if (!gatewayModels) return MODELS;
   return gatewayModels.map((model) => {
     const compiled = compiledById.get(model.id);
+    if (compiled && model.id === ORG_DEFAULT_MODEL_ID) {
+      return {
+        ...compiled,
+        contextWindow: model.contextWindow ?? compiled.contextWindow,
+        maxTokens: model.maxOutputTokens ?? compiled.maxTokens,
+      };
+    }
     if (compiled) return compiled;
     return {
       id: model.id,
