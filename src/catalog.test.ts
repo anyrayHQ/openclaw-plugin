@@ -17,12 +17,17 @@ describe('manifest modelCatalog mirrors catalog.ts', () => {
     ) as {
       modelCatalog: {
         providers: {
-          anyray: { api: string; models: { id: string; maxTokens: number }[] };
+          anyray: {
+            api: string;
+            defaultModel: string;
+            models: { id: string; maxTokens: number }[];
+          };
         };
       };
     };
     const staticEntry = manifest.modelCatalog.providers.anyray;
     assert.equal(staticEntry.api, 'anthropic-messages');
+    assert.ok(staticEntry.models.some((m) => m.id === staticEntry.defaultModel));
     const runtime = buildAnyrayProvider({ gatewayUrl: 'http://gw:8787' }, {});
     assert.deepEqual(
       staticEntry.models.map((m) => [m.id, m.maxTokens]),
@@ -41,17 +46,15 @@ describe('gatewayProviderForModel', () => {
       .models as { id: string }[];
     const routed = models.map((m) => [m.id, gatewayProviderForModel(m.id)]);
     assert.deepEqual(routed, [
-      ['claude-fable-5-1', undefined],
+      ['anyray-default', undefined],
+      ['claude-fable-5-2', undefined],
       ['claude-opus-5-5', undefined],
-      ['claude-opus-5', undefined],
-      ['claude-sonnet-5', undefined],
+      ['claude-sonnet-5-5', undefined],
+      ['claude-haiku-5-5', undefined],
+      ['grok-4.7', 'x-ai'],
+      ['claude-fable-5-1', undefined],
       ['claude-sonnet-4-5', undefined],
       ['claude-haiku-4-5', undefined],
-      ['claude-opus-4-8', undefined],
-      ['grok-4.7', 'x-ai'],
-      ['grok-4.6', 'x-ai'],
-      ['grok-4.3', 'x-ai'],
-      ['grok-build-0.1', 'x-ai'],
     ]);
   });
 

@@ -217,6 +217,113 @@ describe('mergeCatalogModels', () => {
 describe('buildAnyrayProviderWithGatewayModels', () => {
   beforeEach(() => __setGatewaySourcedIds(undefined));
 
+  it('serves the compiled org default when fetch fails or no key is available', async () => {
+    for (const config of [CONFIG, { gatewayUrl: CONFIG.gatewayUrl }]) {
+      const provider = await buildAnyrayProviderWithGatewayModels(
+        config,
+        {},
+        stubFetch(async () => {
+          throw new Error('ECONNREFUSED');
+        })
+      );
+      assert.equal(provider.models[0].id, 'anyray-default');
+      const sentinel = provider.models.find((m) => m.id === 'anyray-default');
+      assert.equal(sentinel?.contextWindow, 200000);
+      assert.equal(sentinel?.maxTokens, 64000);
+      for (const id of ['anyray-default', 'anyray/anyray-default']) {
+        assert.equal(gatewayProviderForModel(id), undefined);
+      }
+    }
+  });
+
+  it('overlays org default limits through the gateway-backed provider', async () => {
+    const provider = await buildAnyrayProviderWithGatewayModels(
+      CONFIG,
+      {},
+      stubFetch(async () => jsonResponse({
+        models: [
+          { id: 'anyray-default', contextWindow: 400000, maxOutputTokens: 128000 },
+        ],
+      }))
+    );
+    assert.deepEqual(provider.models[0], {
+      id: 'anyray-default',
+      name: 'Org default (Anyray)',
+      reasoning: true,
+      input: ['text', 'image'],
+      contextWindow: 400000,
+      maxTokens: 128000,
+    });
+    for (const id of ['anyray-default', 'anyray/anyray-default']) {
+      assert.equal(gatewayProviderForModel(id), undefined);
+    }
+  });
+
+  it('overlays only the reported org default context window', async () => {
+    const provider = await buildAnyrayProviderWithGatewayModels(
+      CONFIG,
+      {},
+      stubFetch(async () => jsonResponse({ models: [{ id: 'anyray-default', contextWindow: 400000 }] }))
+    );
+    assert.equal(provider.models[0].contextWindow, 400000);
+    assert.equal(provider.models[0].maxTokens, 64000);
+  });
+
+  it('overlays only the reported org default output limit', async () => {
+    const provider = await buildAnyrayProviderWithGatewayModels(
+      CONFIG,
+      {},
+      stubFetch(async () => jsonResponse({ models: [{ id: 'anyray-default', maxOutputTokens: 128000 }] }))
+    );
+    assert.equal(provider.models[0].maxTokens, 128000);
+    assert.equal(provider.models[0].contextWindow, 200000);
+  });
+
+  it('keeps compiled org default limits when the gateway reports none', async () => {
+    const provider = await buildAnyrayProviderWithGatewayModels(
+      CONFIG,
+      {},
+      stubFetch(async () => jsonResponse({ models: [{ id: 'anyray-default' }] }))
+    );
+    assert.equal(provider.models[0].contextWindow, 200000);
+    assert.equal(provider.models[0].maxTokens, 64000);
+  });
+
+  it('never publishes a zero limit from a fraction below 1', async () => {
+    const provider = await buildAnyrayProviderWithGatewayModels(
+      CONFIG,
+      {},
+      stubFetch(async () => jsonResponse({
+        models: [
+          { id: 'mystery-model', contextWindow: 0.5, maxOutputTokens: 0.5 },
+          { id: 'anyray-default', contextWindow: 0.99, maxOutputTokens: 0.99 },
+        ],
+      }))
+    );
+    // A floored 0 would be sent as a zero output budget; the floors apply instead.
+    const [unknown, sentinel] = provider.models;
+    assert.equal(unknown.maxTokens, 8192);
+    assert.equal('contextWindow' in unknown, false);
+    assert.equal(sentinel.contextWindow, 200000);
+    assert.equal(sentinel.maxTokens, 64000);
+  });
+
+  it('still floors a fractional limit of at least 1', async () => {
+    const provider = await buildAnyrayProviderWithGatewayModels(
+      CONFIG,
+      {},
+      stubFetch(async () => jsonResponse({
+        models: [
+          { id: 'mystery-model', contextWindow: 400000, maxOutputTokens: 1.5 },
+          { id: 'tiny-model', maxOutputTokens: 1 },
+        ],
+      }))
+    );
+    assert.equal(provider.models[0].maxTokens, 1);
+    assert.equal(provider.models[0].contextWindow, 400000);
+    assert.equal(provider.models[1].maxTokens, 1);
+  });
+
   it('publishes the gateway list and keeps the entry’s other fields', async () => {
     const provider = await buildAnyrayProviderWithGatewayModels(
       CONFIG,
@@ -274,9 +381,9 @@ describe('buildAnyrayProviderWithGatewayModels', () => {
     await buildAnyrayProviderWithGatewayModels(
       CONFIG,
       {},
-      stubFetch(async () => jsonResponse({ models: [{ id: 'grok-4.6' }] }))
+      stubFetch(async () => jsonResponse({ models: [{ id: 'grok-4.7' }] }))
     );
-    assert.equal(gatewayProviderForModel('grok-4.6'), undefined);
+    assert.equal(gatewayProviderForModel('grok-4.7'), undefined);
 
     const provider = await buildAnyrayProviderWithGatewayModels(
       CONFIG,
@@ -285,11 +392,11 @@ describe('buildAnyrayProviderWithGatewayModels', () => {
         throw new Error('ECONNREFUSED');
       })
     );
-    // The compiled list is back, which CONTAINS grok-4.6, so the suppression
+    // The compiled list is back, which CONTAINS grok-4.7, so the suppression
     // must go with it. Leaving it standing would send every Grok call
     // unstamped to the org's default provider, failing there until restart.
-    assert.ok(provider.models.some((m) => m.id === 'grok-4.6'));
-    assert.equal(gatewayProviderForModel('grok-4.6'), 'x-ai');
+    assert.ok(provider.models.some((m) => m.id === 'grok-4.7'));
+    assert.equal(gatewayProviderForModel('grok-4.7'), 'x-ai');
   });
 
   it('resumes stamping on the SDK’s offline staticRun path', async () => {
